@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Edufo App</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    #app, #logoutBtn { display: none; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Edufo Sekolah App</h1>
+
+  <!-- Form Token -->
+  <div id="login">
+    <p>Masukkan token akses:</p>
+    <input type="text" id="tokenInput" placeholder="Bearer Token..." size="80"/>
+    <button onclick="checkToken()">Masuk</button>
+    <p id="error" style="color:red;"></p>
+  </div>
+
+  <!-- Konten Aplikasi -->
+  <div id="app">
+    <p>Selamat datang, <span id="namaSekolah"></span>!</p>
+    <p>Masa aktif: <span id="masaAktif"></span></p>
+    <button id="logoutBtn" onclick="logout()">Logout</button>
+  </div>
+
+  <script>
+    const API_URL = "https://crm.edufo.my.id/api/sekolah/check-data"; // sesuaikan URL API
+
+    function checkToken() {
+      const token = document.getElementById('tokenInput').value.trim();
+      if (!token) return alert("Token tidak boleh kosong.");
+
+      fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Authorization": "Bearer " + token,
+          "Accept": "application/json"
+        }
+      })
+      .then(res => {
+        if (!res.ok) throw new Error("Token tidak valid");
+        return res.json();
+      })
+      .then(data => {
+        const today = new Date().toISOString().slice(0, 10);
+        if (data.tanggal_berakhir < today || data.status !== 'Active') {
+          throw new Error("Token sudah expired atau status non-aktif");
+        }
+
+        // Simpan token sementara
+        sessionStorage.setItem("token", token);
+
+        document.getElementById('login').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+        document.getElementById('namaSekolah').textContent = data.nama_sekolah;
+        document.getElementById('masaAktif').textContent = `${data.tanggal_awal} s.d ${data.tanggal_berakhir}`;
+      })
+      .catch(err => {
+        document.getElementById('error').textContent = err.message;
+      });
+    }
+
+    function logout() {
+      sessionStorage.removeItem("token");
+      location.reload();
+    }
+
+    // Cek otomatis jika token sudah tersimpan
+    window.onload = () => {
+      const token = sessionStorage.getItem("token");
+      if (token) {
+        document.getElementById("tokenInput").value = token;
+        checkToken();
+      }
+    };
+  </script>
+</body>
+</html>
